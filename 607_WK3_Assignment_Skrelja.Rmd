@@ -1,0 +1,30 @@
+---
+title: "Bridges"
+author: "Randi Skrelja"
+date: "September 13, 2015"
+output: html_document
+---
+
+
+
+```{r}
+# Read data file
+Bridges <- read.csv("https://raw.githubusercontent.com/vskrelja/607_DataAcqMgt_Skrelja/master/Bridges_Data.csv", header=FALSE)
+
+# Read Data Dictionary
+Data_Dict <- read.table("https://raw.githubusercontent.com/vskrelja/607_DataAcqMgt_Skrelja/master/Bridges_Data_Dictionary.csv", header=TRUE, sep=",")
+
+# Create a list of column names 
+column_list <- as.character(Data_Dict$name)
+
+# Assign column names
+names(Bridges) <- column_list
+head(Bridges)
+
+# Create dataframe with subset of columns and rows
+Bridges_Prewar <- Bridges[Bridges$ERECTED <= 1945, c("ERECTED", "PURPOSE", "TYPE", "MATERIAL")]
+summary(Bridges_Prewar)
+
+Bridges_Postwar <- Bridges[Bridges$ERECTED > 1945, c("ERECTED", "PURPOSE", "TYPE", "MATERIAL")]
+summary(Bridges_Postwar)
+```
