@@ -1,0 +1,77 @@
+---
+title: "Week 4: Regular Expressions"
+author: "Randi Skrelja"
+date: "September 20, 2015"
+output: html_document
+---
+### 4. Describe the types of strings that confrom to the following regular expresions and construct an example that is matched by the regular expression.
+```{r}
+# (a) [0-9]+\\$
+# Answer: One or more digits followed by $.
+
+library(stringr)
+x <- "123$4"
+str_extract(x, "[0-9]+\\$")
+```
+
+```{r}
+# (b) \\b[a-z]{1,4}\\b
+# Answer: All lower-case words up to 4 characters.
+
+b <- c("This is a sentence.", "this is a sentence.")
+unlist(str_extract_all(b, "\\b[a-z]{1,4}\\b"))
+```
+
+```{r}
+# (c) .*?\\.txt$
+# Answer: Everything ending in .txt at the end of a sentence.
+
+c <- c("xyz.txt", "xyz.csv", "list all xyz.txt files", "list all files like xyz.txt")
+unlist(str_extract_all(c, ".*?\\.txt$"))
+```
+
+```{r}
+# (d) \\d{2}/\\d{2}/\\d{4}
+# Answer: Date in mm/dd/yyyy digit format only.
+
+d <- c("09/20/2015", "09-20-15", "9/20/15", "09/20/15")
+unlist(str_extract_all(d, "\\d{2}/\\d{2}/\\d{4}"))
+```
+
+```{r}
+# (e) <(.+?)>.+?</\\1>
+# Answer: One or more characters within inequalities separated by one or more characters, repeated (backreferencing) after a forward slash.
+
+e <- c("<This></This>", "<This> </This>", "<This> vs. </this>", "<This> vs. </This>", "< > </ >")
+unlist(str_extract_all(e, "<(.+?)>.+?</\\1>"))
+```
+
+### 5. Rewrite the expression from Problem #4 in a way that all elements are altered but the expression performs the same task.
+```{r}
+x <- "123$4"
+str_extract(x, "[:digit:]+\\D")
+```
+
+### 6. Consider the mail address chunkylover53[at]aol[dot]com.
+```{r}
+# (a) Transform the string to a standard mail format using regular expressions.
+
+email <- "chunkylover53[at]aol[dot]com"
+str_replace((str_replace(email, "\\[at\\]","@")), "\\[dot\\]",".")
+```
+
+```{r}
+# (b) Imagine we are trying to extract the digits in the mail address. To do so we write the expression [:digit:]. Explain why this fails and correct the expression.
+# Answer: [:digit:] returns one number (the first occurance); adding "+" returns one or more and using str_extract_all returns all instances of numbers even if separated by letters.
+
+email <- "chunkylover53[at]aol[dot]com"
+str_extract_all(email, "[[:digit:]]+")
+```
+
+```{r}
+# (c) Instead of using the predefined character classes, we would like to use the predefined symbols to extract the digits in the mail address. To do so we write the expression \\D. Explain why this fails and correct the expression.
+# Answer: \\D returns no digits; \\d+ returns more than one digit.
+
+email <- "chunkylover53[at]aol[dot]com"
+str_extract_all(email, "\\d+")
+```
