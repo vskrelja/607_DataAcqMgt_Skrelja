@@ -1,0 +1,46 @@
+---
+title: "607 Project 1"
+author: "Randi Skrelja"
+date: "September 27, 2015"
+---
+In this project, you're given a text file with chess tournament results where the information has some structure. Your
+job is to create an R Markdown file that generates a .CSV file (that could for example be imported into a SQL database)
+
+With the following information for all of the players:
+
+Player's Name, Player's State, Total Number of Points, Player's Pre-Rating, and Average Pre Chess Rating of Opponents.
+
+Note: For the first player, the information would be: Gary Hua, ON, 6.0, 1794, 1605; 1605 was calculated by using the
+pre-tournament opponents' ratings of 1436, 1563, 1600, 1610, 1649, 1663, 1716, and dividing by the total number of games played.
+
+```{r}
+# Read data file
+chess <- read.csv("https://raw.githubusercontent.com/vskrelja/607_DataAcqMgt_Skrelja/master/tournamentinfo.txt", skip=3)
+```
+
+```{r}
+library(stringr)
+
+# Player's Name
+name <- str_trim(unlist(str_extract_all(unlist(chess), "\\w+(\\ \\w+ (\\w|-)* \\w*)")))
+
+# Player's State
+state <- str_trim(unlist(str_extract_all(unlist(chess), " ON | MI | OH ")))
+
+# Total Number of Points
+points <- str_trim(unlist(str_extract_all(unlist(chess), "\\d(\\.\\d)")))
+
+# Player's Pre-rating
+pre_rating <- str_replace_all(str_trim(unlist(str_extract_all(unlist(chess), "R: [[:digit:] ]*"))), "R: ", "")
+
+# Average Pre Chess Rating of Opponents
+x <- str_sub(unlist(chess), start = 48, end = 89)[c(seq(1, length(unlist(chess)), by = 3))]
+opp_rating <- str_extract_all(x, "( |\\d){4}")
+opp_rating <- as.numeric(unlist(opp_rating))
+opp_rating <- as.numeric(pre_rating[opp_rating]) 
+opp_rating_mtx <- matrix(opp_rating, nrow=7, ncol=64)
+opp_rating_avg <- colMeans(opp_rating_mtx, na.rm=T)
+
+# Data Frame
+data.frame(name, state, points, pre_rating, opp_rating_avg)
+```
