@@ -1,0 +1,41 @@
+---
+title: "607 Week 6 Assigment"
+author: "Randi Skrelja"
+date: "October 4, 2015"
+output: html_document
+---
+
+(1) Create a .CSV file (or optionally, a MySQL database!) that includes all of the information above.
+You're encouraged to use a "wide" structure similar to how the information appears above, so
+that you can practice tidying and transformations as described below.
+(2) Read the information from your .CSV file into R, and use tidyr and dplyr as needed to tidy and
+transform your data.
+(3) Perform analysis to compare the arrival delays for the two airlines.
+(4) Your code should be in an R Markdown file, posted to rpubs.com, and should include narrative
+descriptions of your data cleanup work, analysis, and conclusions.
+
+```{r}
+require(tidyr)
+require(dplyr)
+
+x <- read.csv("https://raw.githubusercontent.com/vskrelja/607_DataAcqMgt_Skrelja/master/ALASKA_AMWEST.csv")  # read .csv file
+
+x[1:3,1]<-'ALASKA'   # assign name to cases
+x[4:6,1]<-'AM WEST'  # assign name to cases
+
+names(x)[names(x) == "X"] <- "Airline"   # assign name to column
+names(x)[names(x) == "X.1"] <- "Status"  # assign name to column
+
+x <- x[complete.cases(x),]    # assign complete cases to x -- no missing values
+
+x <- x %>% gather(key, value, Los.Angeles:Seattle)   # set key, value, cols to gather
+
+x <- spread(x, "Status", "value")   # separates status column using value column
+
+x <- mutate(x , total = (x$delayed + x$'on time'), pct_delayed = 100*x$delayed/total) # adds calcuted column
+
+x <- arrange(x,-pct_delayed) # sorts by pct_delayed descending
+x
+
+summarise(group_by(x,Airline),Weighted_Delay_by_Airline=sum(delayed)/sum(total)) # computes weighted average delay by airline
+```
