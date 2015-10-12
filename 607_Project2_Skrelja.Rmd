@@ -1,0 +1,138 @@
+---
+title: "607 HW7"
+author: "Randi Skrelja"
+date: "October 11, 2015"
+output: html_document
+---
+
+
+#US Digital Ad Sales Revenues
+```{r}
+library(gridExtra)
+library(ggplot2)
+library(dplyr)
+library(XML)
+library(tidyr)
+
+
+url<-"http://www.journalism.org/media-indicators/digital-u-s-display-advertising-by-company/"
+tbl<-readHTMLTable(url)
+
+tbl <- data.frame(tbl[[1]],stringsAsFactors = FALSE)
+temp<-names(tbl)
+temp[1]<-"Year"
+names(tbl)<-temp
+
+#Convert Factors to Numbers
+tbl<-sapply(tbl, function(x) if(is.factor(x)) { as.numeric(as.character(x))} else {x})
+tbl<-data.frame(tbl)
+
+#The data
+tbl
+
+#Gather Data into one row per Company per Year
+gather(tbl,Company,Revenue,2:ncol(tbl))
+tbl_tidy<-gather(tbl,Company,Revenue,2:ncol(tbl))
+
+#Plot data
+g1<-ggplot(data=tbl_tidy[tbl_tidy$Company=="Total",], aes(x=Year, y=Revenue, colour=Company)) + geom_line(aes(group=Company))
+
+g2<-ggplot(data=tbl_tidy[tbl_tidy$Company!="Total",], aes(x=Year, y=Revenue, colour=Company)) + geom_line(aes(group=Company))
+
+grid.arrange(g1, g2, nrow=2)
+
+#The revenues are rising fast; but all gains are limited to Google and Facebook. Facebook seems to have overtaken Google sometime in 2012.
+
+#Calculate percentage change along columns (Companies)
+goog<-round(tbl$Google/lag(tbl$Google),2)-1
+fb<-round(tbl$Facebook/lag(tbl$Facebook),2)-1
+
+#Aggregate, gather and plot data
+top2<-data.frame(cbind(2010:2013,goog[2:5],fb[2:5]))
+names(top2)<-c('Year','Google','Facebook')
+
+#Google & Facebook growth rate comparision
+top2
+
+top2<-gather(top2,Company,Percent_Chg,2:3)
+ggplot(data=top2, aes(x=Year, y=Percent_Chg, colour=Company)) + geom_line(aes(group=Company))
+
+#For both Google and Facebook the growth rate has tempered but Facebook seems to be beating Google. 
+```
+
+#Popularity of Past Popes
+```{r}
+library(stringr)
+library(tm)
+
+x<-read.csv('https://raw.githubusercontent.com/vskrelja/607_DataAcqMgt_Skrelja/master/Popes.csv')
+
+x$Pope<-c(rep("POPE FRANCIS",5),rep("POPE BENEDICT XVI",7),rep("POPE JOHN PAUL II",6))
+
+
+x<-x[!(is.na(x$Favorable) | x$Favorable==""), ]
+x<-x[!(is.na(x$X) | x$X==""), ]
+colnames(x)[1]<-c("Period")
+colnames(x)[4]<-c("No_Opinion")
+
+#Determine date of the survey
+x<-separate(x,Period,c("Start","End"),sep="-")
+x$End<-str_sub(x$End, start= -4)
+x<-unite(x,Date,Start,End,sep = " ")
+x$Date<-stripWhitespace(x$Date)
+x$Date<-as.Date(x$Date,format = "%b %d %Y")
+
+#Convert factors to numeric before Mutate
+x[,2:4]<-sapply(x[,2:4], function(x) if(is.factor(x)) { as.numeric(as.character(x))} else {x})
+x<-mutate(x,Percent_Favorable = round(100*Favorable/(Favorable+Unfavorable+No_Opinion),2))
+
+ggplot(data=x, aes(x=Date, y=Percent_Favorable, fill=Pope)) + geom_bar(stat='identity',aes(group=Pope))
+
+
+#Pope Frank has already superceded Pope Benedict and seems all set to give John Paul a run for his money!
+
+```
+
+#NY Times Best Seller List
+```{r}
+
+url<-"http://www.nytimes.com/best-sellers-books/2015-10-04/combined-print-and-e-book-fiction/list.html"
+tbl<-htmlTreeParse(url,useInternal=TRUE)
+
+#Get the values from the webpage
+ranks<-xpathSApply(tbl,"//span[@class='ranking']",xmlValue)
+lastWeek_numWeeks<-xpathSApply(tbl,"//td[@class='weeklyPosition']",xmlValue)
+books<-xpathSApply(tbl,"//span[@class='bookName']",xmlValue)
+
+
+#Create table using the vectors extracted above
+#lastWeek_numWeeks contains both last week's rank and number of weeks on the charts
+lastWeek_numWeeks<-matrix(lastWeek_numWeeks,nrow=length(ranks),2,byrow=TRUE)
+lastWeek_numWeeks<-data.frame(lastWeek_numWeeks)
+colnames(lastWeek_numWeeks)<-c("lastWeek","numWeeks")
+
+#Create a main data frame
+df<-cbind(books,ranks,lastWeek_numWeeks)
+colnames(df)[2]<-c("currWeek")
+
+#Remove comma's from the book name
+df$books<-gsub(",","",df$books)
+#convert to numeric
+df[,2:4]<-sapply(df[,2:4], function(x) if(is.factor(x)) { as.numeric(as.character(x))} else {x})
+df<-arrange(df,-numWeeks)
+
+#The List
+df
+
+#Find the New Arrivals on the charts
+df<-mutate(df,New_Arrival=numWeeks==1)
+summary <- df %>% group_by(New_Arrival) %>% summarise(NumOfBooks=n(),AvgRank=mean(currWeek),RankStdDev=sd(currWeek))
+
+#gather to plot
+summary <- gather(summary,SummaryStatitic,Value,3:4)
+summary
+ggplot(data=summary, aes(x=New_Arrival, y=Value, fill=SummaryStatitic)) + geom_bar(stat='identity',aes(group=SummaryStatitic),position="dodge")
+
+#The new arrivals seem to arrive on the charts at a higher rank and with a lower dispersion of ranks arround that higher number.
+
+```
