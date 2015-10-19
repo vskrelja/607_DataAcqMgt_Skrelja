@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<books>
+<book>
+	<Title>OUTLIERS</Title>
+	<Author_1>Malcolm Gladwell</Author_1>
+	<Author_2> </Author_2>
+	<Publish_Date>11-28-2008</Publish_Date>
+	<NYT_Business_Rank>1</NYT_Business_Rank>
+</book>
+<book>
+	<Title>THINKING, FAST AND SLOW</Title>
+	<Author_1>Daniel Kahneman</Author_1>
+	<Author_2> </Author_2>
+	<Publish_Date>11-27-2011</Publish_Date>
+	<NYT_Business_Rank>3</NYT_Business_Rank>
+</book>
+<book>
+	<Title>THINK LIKE A FREAK</Title>
+	<Author_1>Steven D. Levitt</Author_1>
+	<Author_2>Stephen J. Dubner</Author_2>
+	<Publish_Date>07-07-2015</Publish_Date>
+	<NYT_Business_Rank>9</NYT_Business_Rank>
+</book>
+</books>
