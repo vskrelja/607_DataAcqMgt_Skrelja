@@ -24,7 +24,7 @@ library(randomForest)
 library(rattle)
 library(e1071)
 
-x<-read.table('C:\\Users\\Randi Skrelja\\Box Sync\\MSDA\\607\\wk11&12\\spambase.data', header = F, sep = ",")
+x<-read.table('https://raw.githubusercontent.com/vskrelja/607_DataAcqMgt_Skrelja/master/spambase.data', header = F, sep = ",")
 
 set.seed(1)  # generates same random numbers for reproducibility
 ```
