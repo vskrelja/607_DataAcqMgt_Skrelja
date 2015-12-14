@@ -1,0 +1,145 @@
+---
+title: "607 Data Acquisition and Management Final"
+author: "Randi Skrelja"
+date: "December 13, 2015"
+output: html_document
+---
+
+### Research question
+We are testing to see if the default rates for homeowners is significantly different than the default rates for all loans. Additionally, algorithms using decision trees were created based on various features (eg. demographic, geographic, income, fico etc) to predict default rates. The purpose of this study is to create a credit profile for borrowers to mitigate default risk.
+
+### Cases
+There are 235,629 loans for 2013/2014.
+
+### Data collection
+Data was downloaded from LendingClub's portfolio of consumer loans and includes complete loan data for all loans issued for 2013/2014, including the current loan status (Current, Late, Fully Paid, etc.) and latest payment information. https://www.lendingclub.com/info/download-data.action. Data was also downloaded from Zip-Codes.com which offers demographic information by zip code for the nation. Data was downloaded in csv formats which required tidying and data transformation within R. 
+
+### Type of study
+This is an observational study based on real market data provided by LendingClub.
+
+### Response
+Default/categorical; Default Rate/numerical.
+
+### Explanatory
+Homeownership/categorical; Homeownership Rate/numerical.
+
+### Summary statistics and Analysis: Are Default Rates for homeowners significantly different than default rates for all loans?
+```{r}
+library(ggplot2)
+
+#Load data
+lendclub <- read.csv("https://raw.githubusercontent.com/vskrelja/Final/master/lendingclub_zipcodes.csv",, header=TRUE)
+dim(lendclub)
+str(lendclub)
+x<-data.frame(lendclub)
+
+#Overall Default Rate
+levels(x$loanstatus)
+round(100*nrow(x[x$loanstatus=="ChargedOff"|x$loanstatus=="Default"|x$loanstatus=="Late(31-120days)",])/nrow(x),2)
+
+#Homeowner Default Rate
+levels(x$homeownership)
+homeowners<-x[x$homeownership=="OWN"|x$homeownership=="MORTGAGE",]
+round(100*nrow(homeowners[homeowners$loanstatus=="ChargedOff"|homeowners$loanstatus=="Default"|homeowners$loanstatus=="Late(31-120days)",])/nrow(homeowners),2)
+
+#Distribution of Default rate in the overall population
+population_defaults <- rep(NA, 10000)
+for(i in 1:10000){
+samp <- sample(x$loanstatus, 1000)
+population_defaults[i] <- 100*length(samp[samp=="ChargedOff"|samp=="Default"|samp=="Late(31-120days)"])/1000
+}
+
+#Distribution of Default rate in homeowners
+homeowners_defaults <- rep(NA, 10000)
+for(i in 1:10000){
+samp <- sample(homeowners$loanstatus, 1000)
+homeowners_defaults[i] <- 100*length(samp[samp=="ChargedOff"|samp=="Default"|samp=="Late(31-120days)"])/1000
+}
+
+#Mean and SD of defaults rates in the over all population
+mean(population_defaults); sd(population_defaults);
+
+#Mean and SD of defaults rates in homeowners
+mean(homeowners_defaults); sd(homeowners_defaults);
+
+t.test(homeowners_defaults,population_defaults)
+
+#Plot the ditributon of homeowner defaults vs population defaults
+a<-data.frame('defaults'=homeowners_defaults)
+a$sample<-'homeowners'
+b<-data.frame('defaults'=population_defaults)
+b$sample<-'population'
+combined<-rbind(a,b)
+
+ggplot(combined, aes(defaults, fill = sample)) + geom_density(alpha = 0.1) + geom_vline(xintercept = mean(homeowners_defaults),color='red') + geom_vline(xintercept = mean(population_defaults),color='green')
+```
+
+### Conclusion: Homeowners have lower default rates
+As is evident from the two Sample t-test, the NULL hypothesis (no difference between population defaults and homeowners defaults) can be rejected at
+95% confidence level, since the confidence interval does not include 0. The analysis shows that on average the Homeowner default rates on consumer
+loans can be 0.44% to 0.48% lower than the overall rate at a 95% condifence level. The lower defaults in Homeowners can also be seen in the default 
+rate density plots of Homeowner vs the overall population.
+
+### Predictive Algorithm for default rates using decision Trees; preparing the data. Given a loan, we are trying to predict if a borrowing is going to default using borrower's geographic, demographic, income and fico data.
+```{r}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(rattle)
+library(e1071)
+library(dplyr)
+library(party)
+
+#Remove loans with NA's
+x<-x[complete.cases(x),]
+dim(x)
+
+#Create new categorical variable called indefault for prediction
+x$indefault<-ifelse(x$loanstatus=="ChargedOff"|x$loanstatus=="Default"|x$loanstatus=="Late(31-120days)","default","nondefault")
+x$indefault<-as.factor(x$indefault)
+
+#Subset with relevant fields (independent demographic, geographic, income, fico variables)
+x_pred<-x[,c("term","homeownership","annualinc","addrstate","dti","ficorangelow","averagehousevalue","incomeperhousehold","numberofbusinesses","numberofemployees","businessannualpayroll","populationestimate","indefault")]
+
+#Since the overall data is very imbalanced (<5% Defaults, 9,275/235,220 observations = 3.9%), we will try "under-sampling" the much larger non-default category.
+num_defaults<-length(x_pred$indefault[x_pred$indefault=="default"])
+x_nondefaults<-x_pred[x_pred$indefault=="nondefault",]
+x_pred<-rbind(x_pred[x_pred$indefault=="default",],sample_n(x_nondefaults,num_defaults))
+
+#Partition Data (creates training set and test set)
+inTrain <- createDataPartition(x_pred$indefault, p = 3/4)[[1]]
+training <- x_pred[ inTrain,]
+testing <- x_pred[-inTrain,]
+```
+
+### Regression Tree
+```{r}
+#R Regression Tree
+fit_rpart <- train(indefault~.,method='rpart',data=training)
+  
+#Fancy Decision Tree Plot
+par(mar=c(2,2,1,1))
+fancyRpartPlot(fit_rpart$finalModel)
+
+#Confusion Matrix on Testing set: Regression Tree
+pred_rpart <- predict(fit_rpart, testing)
+confusionMatrix(pred_rpart, testing$indefault, positive = 'default')
+```
+
+Result from Regression Tree: We get an accuracy of over 55% which is an improvement over the default accuracy of 50% (No Information Rate) in the balanced dataset we used for prediction. But given how undesirable False Negatives are in this context, ie predicting bad loans (990) as good, we need to increase the Sensitivity of our prediction. Next we try Random Forest.
+
+### Random Forest
+```{r}
+#R Random Forest
+fit_rf <- randomForest(training$indefault~.,training,importance=TRUE)
+
+#Confusion Matrix on Testing set: Random Forest
+pred_rf <- predict(fit_rf, testing)
+confusionMatrix(pred_rf, testing$indefault, positive = 'default')
+
+head(getTree(fit_rf, 1))
+varImpPlot(fit_rf)
+```
+
+Result from Random Forest and Conclusion: Random Forest is helpful in increasing the Sensitivity (96.5%). Given our primary objective is to predict and avoid Defaults, RF works very well, but given the very low Specificity (4%) the model is of limited use. Overall RF gives us a very marginal improvement in accuracy over the No Information Rate of 50%. Further work needs to be carried out using Bagging and/or Boosting.
